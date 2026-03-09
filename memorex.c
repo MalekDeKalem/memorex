@@ -94,7 +94,7 @@ void drawGrid(Card *cards, int n, Texture2D *tex) {
   }
 }
 
-void updateGrid(Card *cards, int n) {
+void updateGrid(Card *cards, int n, int *score) {
   if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
     Vector2 mouse = GetMousePosition();
     size_t i;
@@ -120,6 +120,10 @@ void updateGrid(Card *cards, int n) {
             cards[revealedIndex].matched = true;
 
             printf("Cards have been matched\n");
+            if (++(*score) >= n / 2) {
+              *score = 0;
+              printf("You won!\n");
+            }
           }
         }
       }
@@ -134,6 +138,7 @@ int main(void) {
   Card *cards = (Card *)malloc(sizeof(Card) * MEM_EASY_SIZE);
   bool waiting = false;
   Texture2D texArr[100];
+  int score = 0;
 
   loadTextures(texArr);
 
@@ -146,7 +151,7 @@ int main(void) {
   initCards(cards, CARD_SIZE, MEM_EASY_SIZE, startX, startY, gapX, gapY);
 
   while (!WindowShouldClose()) {
-    updateGrid(cards, MEM_EASY_SIZE);
+    updateGrid(cards, MEM_EASY_SIZE, &score);
     BeginDrawing();
     ClearBackground(DARKGRAY);
     drawGrid(cards, MEM_EASY_SIZE, &texArr[0]);
