@@ -77,6 +77,7 @@ void initCards(Card *cards, int size, int n, int startX, int startY, int gapX,
     cards[i].col = SKYBLUE;
     cards[i].bounds = (Rectangle){startX + col * (size + gapX),
                                   startY + row * (size + gapY), size, size};
+    cards[i].texName = "obamium";
   }
 }
 
@@ -93,31 +94,45 @@ void drawGrid(Card *cards, int n, Texture2D *tex) {
   }
 }
 
-size_t updateGrid(Card *cards, int n) {
+void updateGrid(Card *cards, int n) {
   if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
     Vector2 mouse = GetMousePosition();
     size_t i;
+    int revealedIndex = -1;
+
+    for (i = 0; i < n; i++) {
+      if (cards[i].revealed) {
+        revealedIndex = i;
+        break;
+      }
+    }
+
     for (i = 0; i < n; i++) {
       if (!cards[i].matched && !cards[i].revealed &&
           CheckCollisionPointRec(mouse, cards[i].bounds)) {
 
         cards[i].revealed = true;
+        if (revealedIndex >= 0) {
+          if (strcmp(cards[revealedIndex].texName, cards[i].texName) == 0) {
+            cards[i].revealed = false;
+            cards[revealedIndex].revealed = false;
+            cards[i].matched = true;
+            cards[revealedIndex].matched = true;
 
-        return i;
+            printf("Cards have been matched\n");
+          }
+        }
       }
     }
   }
-
-  return -1;
 }
 
 int main(void) {
   InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Memorex");
   SetTargetFPS(60);
 
-  Card *cards = (Card *)malloc(sizeof(Card) * MEM_HARD_SIZE);
+  Card *cards = (Card *)malloc(sizeof(Card) * MEM_EASY_SIZE);
   bool waiting = false;
-  size_t prevIndex = -1;
   Texture2D texArr[100];
 
   loadTextures(texArr);
@@ -128,10 +143,10 @@ int main(void) {
   int startX = 200;
   int startY = 50;
 
-  initCards(cards, CARD_SIZE, MEM_HARD_SIZE, startX, startY, gapX, gapY);
+  initCards(cards, CARD_SIZE, MEM_EASY_SIZE, startX, startY, gapX, gapY);
 
   while (!WindowShouldClose()) {
-    prevIndex = updateGrid(cards, MEM_EASY_SIZE);
+    updateGrid(cards, MEM_EASY_SIZE);
     BeginDrawing();
     ClearBackground(DARKGRAY);
     drawGrid(cards, MEM_EASY_SIZE, &texArr[0]);
