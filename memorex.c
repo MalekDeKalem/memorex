@@ -3,6 +3,7 @@
 #include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 
@@ -23,9 +24,9 @@ typedef enum { EASY = 1, MEDIUM, HARD } Difficulty;
 typedef struct {
   bool matched;
   bool revealed;
-  int size;
-  uint64_t key;
   Rectangle bounds;
+  char *texName;
+  Texture2D *tex;
   Color col;
 } Card;
 
@@ -38,6 +39,31 @@ static uint64_t hashFNV(const char *key) {
   return hash;
 }
 
+void loadTextures(Texture2D *texArr) {
+  DIR *dirp;
+  struct dirent *file;
+  char *path = "./textures/";
+
+  dirp = opendir(path);
+
+  if (dirp == NULL) {
+    fprintf(stderr, "Error: failed to open target directory\n");
+  }
+
+  size_t index = 0;
+  while ((file = readdir(dirp))) {
+    if (DT_REG == file->d_type) {
+      printf("Loading texture %s\n", file->d_name);
+      char buffer[100];
+      snprintf(buffer, 100, "%s%s", path, file->d_name);
+      texArr[index] = LoadTexture(buffer);
+      index++;
+    }
+  }
+
+  closedir(dirp);
+}
+
 void initCards(Card *cards, int size, int n, int startX, int startY, int gapX,
                int gapY) {
   size_t i;
@@ -48,9 +74,7 @@ void initCards(Card *cards, int size, int n, int startX, int startY, int gapX,
 
     cards[i].matched = false;
     cards[i].revealed = false;
-    cards[i].key = 0;
     cards[i].col = SKYBLUE;
-    cards[i].size = size;
     cards[i].bounds = (Rectangle){startX + col * (size + gapX),
                                   startY + row * (size + gapY), size, size};
   }
@@ -88,7 +112,7 @@ int main(void) {
   InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Memorex");
   SetTargetFPS(60);
 
-  Card cards[MEM_HARD_SIZE];
+  Card *cards = (Card *)malloc(sizeof(Card) * MEM_HARD_SIZE);
 
   Texture2D tex = LoadTexture("./textures/obama_prism.jpg");
   Difficulty currDiff = EASY;
@@ -108,5 +132,6 @@ int main(void) {
   }
 
   CloseWindow();
+  free(cards);
   return 0;
 }
