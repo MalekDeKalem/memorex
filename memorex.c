@@ -83,7 +83,7 @@ void initCards(Card *cards, int size, int n, int startX, int startY, int gapX,
 void drawGrid(Card *cards, int n, Texture2D *tex) {
   size_t i;
   for (i = 0; i < n; i++) {
-    if (cards[i].revealed) {
+    if (cards[i].revealed || cards[i].matched) {
       Rectangle src = {0, 0, tex->width, tex->height};
       Rectangle dst = cards[i].bounds;
       DrawTexturePro(*tex, src, dst, (Vector2){0, 0}, 0, WHITE);
@@ -93,7 +93,7 @@ void drawGrid(Card *cards, int n, Texture2D *tex) {
   }
 }
 
-void updateGrid(Card *cards, int n) {
+size_t updateGrid(Card *cards, int n) {
   if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
     Vector2 mouse = GetMousePosition();
     size_t i;
@@ -102,10 +102,13 @@ void updateGrid(Card *cards, int n) {
           CheckCollisionPointRec(mouse, cards[i].bounds)) {
 
         cards[i].revealed = true;
-        cards[i].col = BLACK;
+
+        return i;
       }
     }
   }
+
+  return -1;
 }
 
 int main(void) {
@@ -113,8 +116,12 @@ int main(void) {
   SetTargetFPS(60);
 
   Card *cards = (Card *)malloc(sizeof(Card) * MEM_HARD_SIZE);
+  bool waiting = false;
+  size_t prevIndex = -1;
+  Texture2D texArr[100];
 
-  Texture2D tex = LoadTexture("./textures/obama_prism.jpg");
+  loadTextures(texArr);
+
   Difficulty currDiff = EASY;
   int gapX = 10;
   int gapY = 10;
@@ -124,10 +131,10 @@ int main(void) {
   initCards(cards, CARD_SIZE, MEM_HARD_SIZE, startX, startY, gapX, gapY);
 
   while (!WindowShouldClose()) {
-    updateGrid(cards, MEM_EASY_SIZE);
+    prevIndex = updateGrid(cards, MEM_EASY_SIZE);
     BeginDrawing();
     ClearBackground(DARKGRAY);
-    drawGrid(cards, MEM_EASY_SIZE, &tex);
+    drawGrid(cards, MEM_EASY_SIZE, &texArr[0]);
     EndDrawing();
   }
 
