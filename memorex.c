@@ -56,11 +56,13 @@ void initCards(Card *cards, int size, int n, int startX, int startY, int gapX,
   }
 }
 
-void drawGrid(Card *cards, int n) {
+void drawGrid(Card *cards, int n, Texture2D *tex) {
   size_t i;
   for (i = 0; i < n; i++) {
     if (cards[i].revealed) {
-      DrawRectangleRec(cards[i].bounds, BLACK);
+      Rectangle src = {0, 0, tex->width, tex->height};
+      Rectangle dst = cards[i].bounds;
+      DrawTexturePro(*tex, src, dst, (Vector2){0, 0}, 0, WHITE);
     } else {
       DrawRectangleRec(cards[i].bounds, cards[i].col);
     }
@@ -88,6 +90,7 @@ int main(void) {
 
   Card cards[MEM_HARD_SIZE];
 
+  Texture2D tex = LoadTexture("./textures/obama_prism.jpg");
   Difficulty currDiff = EASY;
   int gapX = 10;
   int gapY = 10;
@@ -100,7 +103,7 @@ int main(void) {
     updateGrid(cards, MEM_EASY_SIZE);
     BeginDrawing();
     ClearBackground(DARKGRAY);
-    drawGrid(cards, MEM_EASY_SIZE);
+    drawGrid(cards, MEM_EASY_SIZE, &tex);
     EndDrawing();
   }
 
