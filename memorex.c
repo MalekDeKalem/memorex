@@ -39,7 +39,7 @@ static uint64_t hashFNV(const char *key) {
   return hash;
 }
 
-void loadTextures(Texture2D *texArr) {
+void loadTextures(Texture2D *texArr, char **texNames) {
   DIR *dirp;
   struct dirent *file;
   char *path = "./textures/";
@@ -57,6 +57,7 @@ void loadTextures(Texture2D *texArr) {
       char buffer[100];
       snprintf(buffer, 100, "%s%s", path, file->d_name);
       texArr[index] = LoadTexture(buffer);
+      texNames[index] = file->d_name;
       index++;
     }
   }
@@ -138,9 +139,10 @@ int main(void) {
   Card *cards = (Card *)malloc(sizeof(Card) * MEM_EASY_SIZE);
   bool waiting = false;
   Texture2D texArr[100];
+  char *texNames[100];
   int score = 0;
 
-  loadTextures(texArr);
+  loadTextures(texArr, texNames);
 
   Difficulty currDiff = EASY;
   int gapX = 10;
