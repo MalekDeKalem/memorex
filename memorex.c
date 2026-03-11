@@ -58,7 +58,7 @@ void loadTextures(Texture2D *texArr, char **texNames) {
       char buffer[100];
       snprintf(buffer, 100, "%s%s", path, file->d_name);
       texArr[index] = LoadTexture(buffer);
-      texNames[index] = file->d_name;
+      texNames[index] = strdup(file->d_name);
       index++;
     }
   }
@@ -149,6 +149,7 @@ void updateGrid(Card *cards, int n, int *score, int *firstCard, int *secondCard,
               printf("You won\n");
             }
           } else {
+            printf("Waiting\n");
             *waiting = true;
             *timer = 0.0f;
           }
@@ -180,7 +181,7 @@ int main(void) {
   int startX = 200;
   int startY = 50;
 
-  initCards(cards, texArr, texNames, 2, CARD_SIZE, MEM_EASY_SIZE, startX,
+  initCards(cards, texArr, texNames, 12, CARD_SIZE, MEM_EASY_SIZE, startX,
             startY, gapX, gapY);
 
   while (!WindowShouldClose()) {
