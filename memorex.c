@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 #define MEM_EASY_SIZE 24
 #define MEM_MEDIUM_SIZE 48
@@ -65,8 +66,8 @@ void loadTextures(Texture2D *texArr, char **texNames) {
   closedir(dirp);
 }
 
-void initCards(Card *cards, int size, int n, int startX, int startY, int gapX,
-               int gapY) {
+void initCards(Card *cards, Texture2D *texArr, char **texNames, int texSize,
+               int size, int n, int startX, int startY, int gapX, int gapY) {
   size_t i;
   for (i = 0; i < n; i++) {
 
@@ -78,24 +79,42 @@ void initCards(Card *cards, int size, int n, int startX, int startY, int gapX,
     cards[i].col = SKYBLUE;
     cards[i].bounds = (Rectangle){startX + col * (size + gapX),
                                   startY + row * (size + gapY), size, size};
-    cards[i].texName = "obamium";
+
+    cards[i].texName = texNames[i % texSize];
+    cards[i].tex = &texArr[i % texSize];
   }
 }
 
-void drawGrid(Card *cards, int n, Texture2D *tex) {
+void drawGrid(Card *cards, int n) {
   size_t i;
   for (i = 0; i < n; i++) {
     if (cards[i].revealed || cards[i].matched) {
-      Rectangle src = {0, 0, tex->width, tex->height};
+      Rectangle src = {0, 0, cards[i].tex->width, cards[i].tex->height};
       Rectangle dst = cards[i].bounds;
-      DrawTexturePro(*tex, src, dst, (Vector2){0, 0}, 0, WHITE);
+      DrawTexturePro(*cards[i].tex, src, dst, (Vector2){0, 0}, 0, WHITE);
     } else {
       DrawRectangleRec(cards[i].bounds, cards[i].col);
     }
   }
 }
 
-void updateGrid(Card *cards, int n, int *score) {
+void updateGrid(Card *cards, int n, int *score, int *firstCard, int *secondCard,
+                float *timer, bool *waiting) {
+
+  float dt = GetFrameTime();
+  if (*waiting) {
+    *timer += dt;
+    if (*timer >= 1.0f) {
+      cards[*firstCard].revealed = false;
+      cards[*secondCard].revealed = false;
+      *firstCard = -1;
+      *secondCard = -1;
+      *waiting = false;
+      *timer = 0.0f;
+    }
+    return;
+  }
+
   if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
     Vector2 mouse = GetMousePosition();
     size_t i;
@@ -113,20 +132,28 @@ void updateGrid(Card *cards, int n, int *score) {
           CheckCollisionPointRec(mouse, cards[i].bounds)) {
 
         cards[i].revealed = true;
-        if (revealedIndex >= 0) {
-          if (strcmp(cards[revealedIndex].texName, cards[i].texName) == 0) {
-            cards[i].revealed = false;
-            cards[revealedIndex].revealed = false;
-            cards[i].matched = true;
-            cards[revealedIndex].matched = true;
 
-            printf("Cards have been matched\n");
+        if (*firstCard == -1) {
+          *firstCard = i;
+        } else if (*secondCard == -1) {
+          *secondCard = i;
+          if (strcmp(cards[*firstCard].texName, cards[*secondCard].texName) ==
+              0) {
+            cards[*firstCard].matched = true;
+            cards[*secondCard].matched = true;
+
+            *firstCard = -1;
+            *secondCard = -1;
+
             if (++(*score) >= n / 2) {
-              *score = 0;
-              printf("You won!\n");
+              printf("You won\n");
             }
+          } else {
+            *waiting = true;
+            *timer = 0.0f;
           }
         }
+        break;
       }
     }
   }
@@ -137,6 +164,9 @@ int main(void) {
   SetTargetFPS(60);
 
   Card *cards = (Card *)malloc(sizeof(Card) * MEM_EASY_SIZE);
+  int firstCard = -1;
+  int secondCard = -1;
+  float revealTimer = 0.0f;
   bool waiting = false;
   Texture2D texArr[100];
   char *texNames[100];
@@ -150,13 +180,15 @@ int main(void) {
   int startX = 200;
   int startY = 50;
 
-  initCards(cards, CARD_SIZE, MEM_EASY_SIZE, startX, startY, gapX, gapY);
+  initCards(cards, texArr, texNames, 2, CARD_SIZE, MEM_EASY_SIZE, startX,
+            startY, gapX, gapY);
 
   while (!WindowShouldClose()) {
-    updateGrid(cards, MEM_EASY_SIZE, &score);
+    updateGrid(cards, MEM_EASY_SIZE, &score, &firstCard, &secondCard,
+               &revealTimer, &waiting);
     BeginDrawing();
     ClearBackground(DARKGRAY);
-    drawGrid(cards, MEM_EASY_SIZE, &texArr[0]);
+    drawGrid(cards, MEM_EASY_SIZE);
     EndDrawing();
   }
 
