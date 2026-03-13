@@ -16,8 +16,9 @@
 #define GRID_WIDTH_EASY 6
 #define GRID_HEIGHT_EASY 4
 #define CARD_SIZE 50
-#define FNV_PRIME 1099511628211UL
-#define FNV_OFFSET 14695981039346656037UL
+#define DIFF_CARD_HEIGHT 400
+#define DIFF_CARD_WIDTH 200
+#define DIFF_CARD_GAP 20
 
 typedef enum { DIFFPAGE, GAMEPAGE } Screen;
 typedef enum { EASY = 1, MEDIUM, HARD } Difficulty;
@@ -30,15 +31,6 @@ typedef struct {
   Texture2D *tex;
   Color col;
 } Card;
-
-static uint64_t hashFNV(const char *key) {
-  uint64_t hash = FNV_OFFSET;
-  for (const char *p; *p; p++) {
-    hash ^= (uint64_t)(unsigned char)(*p);
-    hash *= FNV_PRIME;
-  }
-  return hash;
-}
 
 void loadTextures(Texture2D *texArr, char **texNames) {
   DIR *dirp;
@@ -161,17 +153,18 @@ void updateGrid(Card *cards, int n, int *score, int *firstCard, int *secondCard,
 }
 
 void updateDiffPage(Rectangle *rec1, Rectangle *rec2, Rectangle *rec3,
-                    Screen *page) {
+                    Screen *page, Difficulty *diff) {
   if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
     Vector2 mouse = GetMousePosition();
 
     if (CheckCollisionPointRec(mouse, *rec1)) {
-
+      *diff = EASY;
       *page = GAMEPAGE;
     } else if (CheckCollisionPointRec(mouse, *rec2)) {
-
+      *diff = MEDIUM;
       *page = GAMEPAGE;
     } else if (CheckCollisionPointRec(mouse, *rec3)) {
+      *diff = HARD;
       *page = GAMEPAGE;
     }
   }
@@ -181,7 +174,7 @@ int main(void) {
   InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Memorex");
   SetTargetFPS(60);
 
-  Card *cards = (Card *)malloc(sizeof(Card) * MEM_EASY_SIZE);
+  Card *cards = (Card *)malloc(sizeof(Card) * MEM_HARD_SIZE);
   int firstCard = -1;
   int secondCard = -1;
   float revealTimer = 0.0f;
@@ -199,14 +192,20 @@ int main(void) {
   int startX = 200;
   int startY = 50;
 
-  Rectangle rec1 = {
-      .x = 20, .y = WINDOW_HEIGHT / 2.0 - 150, .width = 200, .height = 400};
+  Rectangle rec1 = {.x = DIFF_CARD_GAP * 1 + DIFF_CARD_WIDTH * 0,
+                    .y = WINDOW_HEIGHT / 2.0 - DIFF_CARD_HEIGHT / 2.0,
+                    .width = DIFF_CARD_WIDTH,
+                    .height = DIFF_CARD_HEIGHT};
 
-  Rectangle rec2 = {
-      .x = 240, .y = WINDOW_HEIGHT / 2.0 - 150, .width = 200, .height = 400};
+  Rectangle rec2 = {.x = DIFF_CARD_GAP * 2 + DIFF_CARD_WIDTH * 1,
+                    .y = WINDOW_HEIGHT / 2.0 - DIFF_CARD_HEIGHT / 2.0,
+                    .width = DIFF_CARD_WIDTH,
+                    .height = DIFF_CARD_HEIGHT};
 
-  Rectangle rec3 = {
-      .x = 460, .y = WINDOW_HEIGHT / 2.0 - 150, .width = 200, .height = 400};
+  Rectangle rec3 = {.x = DIFF_CARD_GAP * 3 + DIFF_CARD_WIDTH * 2,
+                    .y = WINDOW_HEIGHT / 2.0 - DIFF_CARD_HEIGHT / 2.0,
+                    .width = DIFF_CARD_WIDTH,
+                    .height = DIFF_CARD_HEIGHT};
 
   initCards(cards, texArr, texNames, 12, CARD_SIZE, MEM_EASY_SIZE, startX,
             startY, gapX, gapY);
@@ -215,14 +214,12 @@ int main(void) {
 
     switch (currScreen) {
     case DIFFPAGE:
-
-      updateDiffPage(&rec1, &rec2, &rec3, &currScreen);
+      updateDiffPage(&rec1, &rec2, &rec3, &currScreen, &currDiff);
       BeginDrawing();
       DrawRectangleRec(rec1, GREEN);
       DrawRectangleRec(rec2, GREEN);
       DrawRectangleRec(rec3, GREEN);
       EndDrawing();
-
       break;
     case GAMEPAGE:
       updateGrid(cards, MEM_EASY_SIZE, &score, &firstCard, &secondCard,
