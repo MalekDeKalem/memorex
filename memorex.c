@@ -160,6 +160,23 @@ void updateGrid(Card *cards, int n, int *score, int *firstCard, int *secondCard,
   }
 }
 
+void updateDiffPage(Rectangle *rec1, Rectangle *rec2, Rectangle *rec3,
+                    Screen *page) {
+  if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+    Vector2 mouse = GetMousePosition();
+
+    if (CheckCollisionPointRec(mouse, *rec1)) {
+
+      *page = GAMEPAGE;
+    } else if (CheckCollisionPointRec(mouse, *rec2)) {
+
+      *page = GAMEPAGE;
+    } else if (CheckCollisionPointRec(mouse, *rec3)) {
+      *page = GAMEPAGE;
+    }
+  }
+}
+
 int main(void) {
   InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Memorex");
   SetTargetFPS(60);
@@ -176,21 +193,46 @@ int main(void) {
   loadTextures(texArr, texNames);
 
   Difficulty currDiff = EASY;
+  Screen currScreen = DIFFPAGE;
   int gapX = 10;
   int gapY = 10;
   int startX = 200;
   int startY = 50;
 
+  Rectangle rec1 = {
+      .x = 20, .y = WINDOW_HEIGHT / 2.0 - 150, .width = 200, .height = 400};
+
+  Rectangle rec2 = {
+      .x = 240, .y = WINDOW_HEIGHT / 2.0 - 150, .width = 200, .height = 400};
+
+  Rectangle rec3 = {
+      .x = 460, .y = WINDOW_HEIGHT / 2.0 - 150, .width = 200, .height = 400};
+
   initCards(cards, texArr, texNames, 12, CARD_SIZE, MEM_EASY_SIZE, startX,
             startY, gapX, gapY);
 
   while (!WindowShouldClose()) {
-    updateGrid(cards, MEM_EASY_SIZE, &score, &firstCard, &secondCard,
-               &revealTimer, &waiting);
-    BeginDrawing();
-    ClearBackground(DARKGRAY);
-    drawGrid(cards, MEM_EASY_SIZE);
-    EndDrawing();
+
+    switch (currScreen) {
+    case DIFFPAGE:
+
+      updateDiffPage(&rec1, &rec2, &rec3, &currScreen);
+      BeginDrawing();
+      DrawRectangleRec(rec1, GREEN);
+      DrawRectangleRec(rec2, GREEN);
+      DrawRectangleRec(rec3, GREEN);
+      EndDrawing();
+
+      break;
+    case GAMEPAGE:
+      updateGrid(cards, MEM_EASY_SIZE, &score, &firstCard, &secondCard,
+                 &revealTimer, &waiting);
+      BeginDrawing();
+      ClearBackground(DARKGRAY);
+      drawGrid(cards, MEM_EASY_SIZE);
+      EndDrawing();
+      break;
+    }
   }
 
   CloseWindow();
