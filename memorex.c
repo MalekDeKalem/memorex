@@ -19,6 +19,10 @@
 #define DIFF_CARD_HEIGHT 400
 #define DIFF_CARD_WIDTH 200
 #define DIFF_CARD_GAP 20
+#define DIFF_CARD_POS                                                          \
+  ((WINDOW_WIDTH / 2) - ((DIFF_CARD_WIDTH * 3 + DIFF_CARD_GAP * 2) / 2))
+#define H1_SIZE 50
+#define H2_SIZE 30
 
 typedef enum { DIFFPAGE, GAMEPAGE } Screen;
 typedef enum { EASY = 1, MEDIUM, HARD } Difficulty;
@@ -192,23 +196,34 @@ int main(void) {
   int startX = 200;
   int startY = 50;
 
-  Rectangle rec1 = {.x = DIFF_CARD_GAP * 1 + DIFF_CARD_WIDTH * 0,
+  Rectangle rec1 = {.x =
+                        DIFF_CARD_GAP * 1 + DIFF_CARD_WIDTH * 0 + DIFF_CARD_POS,
                     .y = WINDOW_HEIGHT / 2.0 - DIFF_CARD_HEIGHT / 2.0,
                     .width = DIFF_CARD_WIDTH,
                     .height = DIFF_CARD_HEIGHT};
 
-  Rectangle rec2 = {.x = DIFF_CARD_GAP * 2 + DIFF_CARD_WIDTH * 1,
+  Rectangle rec2 = {.x =
+                        DIFF_CARD_GAP * 2 + DIFF_CARD_WIDTH * 1 + DIFF_CARD_POS,
                     .y = WINDOW_HEIGHT / 2.0 - DIFF_CARD_HEIGHT / 2.0,
                     .width = DIFF_CARD_WIDTH,
                     .height = DIFF_CARD_HEIGHT};
 
-  Rectangle rec3 = {.x = DIFF_CARD_GAP * 3 + DIFF_CARD_WIDTH * 2,
+  Rectangle rec3 = {.x =
+                        DIFF_CARD_GAP * 3 + DIFF_CARD_WIDTH * 2 + DIFF_CARD_POS,
                     .y = WINDOW_HEIGHT / 2.0 - DIFF_CARD_HEIGHT / 2.0,
                     .width = DIFF_CARD_WIDTH,
                     .height = DIFF_CARD_HEIGHT};
 
   initCards(cards, texArr, texNames, 12, CARD_SIZE, MEM_EASY_SIZE, startX,
             startY, gapX, gapY);
+
+  const char *easy = "Easy";
+  const char *medium = "Medium";
+  const char *hard = "Hard";
+
+  int easyTextWidth = MeasureText(easy, H1_SIZE);
+  int mediumTextWidth = MeasureText(medium, H1_SIZE);
+  int hardTextWidth = MeasureText(hard, H1_SIZE);
 
   while (!WindowShouldClose()) {
 
@@ -219,6 +234,14 @@ int main(void) {
       DrawRectangleRec(rec1, GREEN);
       DrawRectangleRec(rec2, GREEN);
       DrawRectangleRec(rec3, GREEN);
+
+      DrawRectangle(rec1.x + 5, rec1.y + 5, DIFF_CARD_WIDTH - 10,
+                    DIFF_CARD_HEIGHT - 10, BLACK);
+      DrawRectangle(rec2.x + 5, rec2.y + 5, DIFF_CARD_WIDTH - 10,
+                    DIFF_CARD_HEIGHT - 10, BLACK);
+      DrawRectangle(rec3.x + 5, rec3.y + 5, DIFF_CARD_WIDTH - 10,
+                    DIFF_CARD_HEIGHT - 10, BLACK);
+
       EndDrawing();
       break;
     case GAMEPAGE:
