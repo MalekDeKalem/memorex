@@ -21,8 +21,8 @@
 #define DIFF_CARD_GAP 20
 #define DIFF_CARD_POS                                                          \
   ((WINDOW_WIDTH / 2) - ((DIFF_CARD_WIDTH * 3 + DIFF_CARD_GAP * 2) / 2))
-#define H1_SIZE 50
-#define H2_SIZE 30
+#define H1_SIZE 30
+#define H2_SIZE 20
 
 typedef enum { DIFFPAGE, GAMEPAGE } Screen;
 typedef enum { EASY = 1, MEDIUM, HARD } Difficulty;
@@ -242,6 +242,15 @@ int main(void) {
       DrawRectangle(rec3.x + 5, rec3.y + 5, DIFF_CARD_WIDTH - 10,
                     DIFF_CARD_HEIGHT - 10, BLACK);
 
+      DrawText(easy, (rec1.x + DIFF_CARD_WIDTH / 2.0) - (easyTextWidth / 2.0),
+               (rec1.y + DIFF_CARD_HEIGHT / 2.0) - H1_SIZE, H1_SIZE, RAYWHITE);
+
+      DrawText(medium,
+               (rec2.x + DIFF_CARD_WIDTH / 2.0) - (mediumTextWidth / 2.0),
+               (rec2.y + DIFF_CARD_HEIGHT / 2.0) - H1_SIZE, H1_SIZE, RAYWHITE);
+
+      DrawText(hard, (rec3.x + DIFF_CARD_WIDTH / 2.0) - (hardTextWidth / 2.0),
+               (rec3.y + DIFF_CARD_HEIGHT / 2.0) - H1_SIZE, H1_SIZE, RAYWHITE);
       EndDrawing();
       break;
     case GAMEPAGE:
