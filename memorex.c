@@ -6,14 +6,17 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <time.h>
 #include <unistd.h>
 
 #define MEM_EASY_SIZE 24
 #define MEM_MEDIUM_SIZE 48
 #define MEM_HARD_SIZE 64
-#define WINDOW_WIDTH 800
-#define WINDOW_HEIGHT 600
+#define WINDOW_WIDTH 1000
+#define WINDOW_HEIGHT 800
 #define GRID_WIDTH_EASY 6
+#define GRID_WIDTH_MEDIUM 6
+#define GRID_WIDTH_HARD 6
 #define GRID_HEIGHT_EASY 4
 #define CARD_SIZE 50
 #define DIFF_CARD_HEIGHT 400
@@ -35,6 +38,32 @@ typedef struct {
   Texture2D *tex;
   Color col;
 } Card;
+
+void swapCard(Card *a, Card *b) {
+  Card tmp = *a;
+  *a = *b;
+  *b = tmp;
+}
+
+void shuffleCards(Card *cards, int n) {
+  int i;
+  for (i = n - 1; i > 0; i--) {
+    int x = rand() % (i + 1);
+    swapCard(&cards[i], &cards[x]);
+  }
+}
+
+void layoutCards(Card *cards, int n, int gridWidth, int size, int startX,
+                 int startY, int gapX, int gapY) {
+  int i;
+  for (i = 0; i < n; i++) {
+    int col = i % gridWidth;
+    int row = i / gridWidth;
+
+    cards[i].bounds = (Rectangle){startX + col * (size + gapX),
+                                  startY + row * (size + gapY), size, size};
+  }
+}
 
 void loadTextures(Texture2D *texArr, char **texNames) {
   DIR *dirp;
@@ -62,6 +91,7 @@ void loadTextures(Texture2D *texArr, char **texNames) {
   closedir(dirp);
 }
 
+/*
 void initCards(Card *cards, Texture2D *texArr, char **texNames, int texSize,
                int size, int n, int startX, int startY, int gapX, int gapY) {
   size_t i;
@@ -76,8 +106,23 @@ void initCards(Card *cards, Texture2D *texArr, char **texNames, int texSize,
     cards[i].bounds = (Rectangle){startX + col * (size + gapX),
                                   startY + row * (size + gapY), size, size};
 
-    cards[i].texName = texNames[i % texSize];
-    cards[i].tex = &texArr[i % texSize];
+    int pairIndex = (i / 2) % texSize;
+    cards[i].texName = texNames[pairIndex];
+    cards[i].tex = &texArr[pairIndex];
+  }
+}*/
+
+void initCards(Card *cards, Texture2D *texArr, char **texNames, int texSize,
+               int n) {
+  int i;
+  for (i = 0; i < n; i++) {
+    int pairIndex = (i / 2) % texSize;
+
+    cards[i].matched = false;
+    cards[i].revealed = false;
+    cards[i].col = SKYBLUE;
+    cards[i].texName = texNames[pairIndex];
+    cards[i].tex = &texArr[pairIndex];
   }
 }
 
@@ -156,20 +201,34 @@ void updateGrid(Card *cards, int n, int *score, int *firstCard, int *secondCard,
   }
 }
 
-void updateDiffPage(Rectangle *rec1, Rectangle *rec2, Rectangle *rec3,
-                    Screen *page, Difficulty *diff) {
+void updateDiffPage(Card *cards, Rectangle *rec1, Rectangle *rec2,
+                    Rectangle *rec3, Screen *page, Difficulty *diff,
+                    Texture2D *texArr, char **texNames, int startX, int startY,
+                    int gapX, int gapY) {
   if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
     Vector2 mouse = GetMousePosition();
 
     if (CheckCollisionPointRec(mouse, *rec1)) {
       *diff = EASY;
       *page = GAMEPAGE;
+      initCards(cards, texArr, texNames, 12, MEM_EASY_SIZE);
+      shuffleCards(cards, MEM_EASY_SIZE);
+      layoutCards(cards, MEM_EASY_SIZE, GRID_WIDTH_EASY, CARD_SIZE, startX,
+                  startY, gapX, gapY);
     } else if (CheckCollisionPointRec(mouse, *rec2)) {
       *diff = MEDIUM;
       *page = GAMEPAGE;
+      initCards(cards, texArr, texNames, 12, MEM_MEDIUM_SIZE);
+      shuffleCards(cards, MEM_MEDIUM_SIZE);
+      layoutCards(cards, MEM_MEDIUM_SIZE, GRID_WIDTH_MEDIUM, CARD_SIZE, startX,
+                  startY, gapX, gapY);
     } else if (CheckCollisionPointRec(mouse, *rec3)) {
       *diff = HARD;
       *page = GAMEPAGE;
+      initCards(cards, texArr, texNames, 12, MEM_HARD_SIZE);
+      shuffleCards(cards, MEM_HARD_SIZE);
+      layoutCards(cards, MEM_HARD_SIZE, GRID_WIDTH_HARD, CARD_SIZE, startX,
+                  startY, gapX, gapY);
     }
   }
 }
@@ -196,6 +255,8 @@ int main(void) {
   int startX = 200;
   int startY = 50;
 
+  srand(time(NULL));
+
   Rectangle rec1 = {.x =
                         DIFF_CARD_GAP * 1 + DIFF_CARD_WIDTH * 0 + DIFF_CARD_POS,
                     .y = WINDOW_HEIGHT / 2.0 - DIFF_CARD_HEIGHT / 2.0,
@@ -213,9 +274,6 @@ int main(void) {
                     .y = WINDOW_HEIGHT / 2.0 - DIFF_CARD_HEIGHT / 2.0,
                     .width = DIFF_CARD_WIDTH,
                     .height = DIFF_CARD_HEIGHT};
-
-  initCards(cards, texArr, texNames, 12, CARD_SIZE, MEM_HARD_SIZE, startX,
-            startY, gapX, gapY);
 
   const char *easy = "Easy";
   const char *medium = "Medium";
@@ -237,7 +295,8 @@ int main(void) {
 
     switch (currScreen) {
     case DIFFPAGE:
-      updateDiffPage(&rec1, &rec2, &rec3, &currScreen, &currDiff);
+      updateDiffPage(cards, &rec1, &rec2, &rec3, &currScreen, &currDiff, texArr,
+                     texNames, startX, startY, gapX, gapY);
       BeginDrawing();
       DrawRectangleRec(rec1, GREEN);
       DrawRectangleRec(rec2, GREEN);
