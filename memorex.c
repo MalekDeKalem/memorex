@@ -214,7 +214,7 @@ int main(void) {
                     .width = DIFF_CARD_WIDTH,
                     .height = DIFF_CARD_HEIGHT};
 
-  initCards(cards, texArr, texNames, 12, CARD_SIZE, MEM_EASY_SIZE, startX,
+  initCards(cards, texArr, texNames, 12, CARD_SIZE, MEM_HARD_SIZE, startX,
             startY, gapX, gapY);
 
   const char *easy = "Easy";
@@ -278,12 +278,34 @@ int main(void) {
       EndDrawing();
       break;
     case GAMEPAGE:
-      updateGrid(cards, MEM_EASY_SIZE, &score, &firstCard, &secondCard,
-                 &revealTimer, &waiting);
-      BeginDrawing();
-      ClearBackground(DARKGRAY);
-      drawGrid(cards, MEM_EASY_SIZE);
-      EndDrawing();
+
+      switch (currDiff) {
+      case EASY:
+        updateGrid(cards, MEM_EASY_SIZE, &score, &firstCard, &secondCard,
+                   &revealTimer, &waiting);
+        BeginDrawing();
+        ClearBackground(DARKGRAY);
+        drawGrid(cards, MEM_EASY_SIZE);
+        EndDrawing();
+        break;
+      case MEDIUM:
+        updateGrid(cards, MEM_MEDIUM_SIZE, &score, &firstCard, &secondCard,
+                   &revealTimer, &waiting);
+        BeginDrawing();
+        ClearBackground(DARKGRAY);
+        drawGrid(cards, MEM_MEDIUM_SIZE);
+        EndDrawing();
+        break;
+      case HARD:
+        updateGrid(cards, MEM_HARD_SIZE, &score, &firstCard, &secondCard,
+                   &revealTimer, &waiting);
+        BeginDrawing();
+        ClearBackground(DARKGRAY);
+        drawGrid(cards, MEM_HARD_SIZE);
+        EndDrawing();
+        break;
+      }
+
       break;
     }
   }
