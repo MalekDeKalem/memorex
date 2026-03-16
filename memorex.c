@@ -221,9 +221,17 @@ int main(void) {
   const char *medium = "Medium";
   const char *hard = "Hard";
 
+  const char *cardTextEasy = "24 Cards";
+  const char *cardTextMedium = "48 Cards";
+  const char *cardTextHard = "64 Cards";
+
   int easyTextWidth = MeasureText(easy, H1_SIZE);
   int mediumTextWidth = MeasureText(medium, H1_SIZE);
   int hardTextWidth = MeasureText(hard, H1_SIZE);
+
+  int cardTextEasyWidth = MeasureText(cardTextEasy, H2_SIZE);
+  int cardTextMediumWidth = MeasureText(cardTextMedium, H2_SIZE);
+  int cardTextHardWidth = MeasureText(cardTextHard, H2_SIZE);
 
   while (!WindowShouldClose()) {
 
@@ -251,6 +259,22 @@ int main(void) {
 
       DrawText(hard, (rec3.x + DIFF_CARD_WIDTH / 2.0) - (hardTextWidth / 2.0),
                (rec3.y + DIFF_CARD_HEIGHT / 2.0) - H1_SIZE, H1_SIZE, RAYWHITE);
+
+      DrawText(cardTextEasy,
+               (rec1.x + DIFF_CARD_WIDTH / 2.0) - (cardTextEasyWidth / 2.0),
+               (rec1.y + DIFF_CARD_HEIGHT / 2.0 + H1_SIZE + 50) - H2_SIZE,
+               H2_SIZE, RAYWHITE);
+
+      DrawText(cardTextMedium,
+               (rec2.x + DIFF_CARD_WIDTH / 2.0) - (cardTextMediumWidth / 2.0),
+               (rec2.y + DIFF_CARD_HEIGHT / 2.0 + H1_SIZE + 50) - H2_SIZE,
+               H2_SIZE, RAYWHITE);
+
+      DrawText(cardTextHard,
+               (rec3.x + DIFF_CARD_WIDTH / 2.0) - (cardTextHardWidth / 2.0),
+               (rec3.y + DIFF_CARD_HEIGHT / 2.0 + H1_SIZE + 50) - H2_SIZE,
+               H2_SIZE, RAYWHITE);
+
       EndDrawing();
       break;
     case GAMEPAGE:
