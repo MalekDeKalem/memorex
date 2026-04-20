@@ -26,6 +26,8 @@
   ((WINDOW_WIDTH / 2) - ((DIFF_CARD_WIDTH * 3 + DIFF_CARD_GAP * 2) / 2))
 #define H1_SIZE 30
 #define H2_SIZE 20
+#define CARD_MATRIX_POS_EASY                                                   \
+  ((WINDOW_WIDTH / 2) - ((GRID_WIDTH_EASY * (CARD_SIZE + 10)) / 2))
 
 typedef enum { DIFFPAGE, GAMEPAGE } Screen;
 typedef enum { EASY = 1, MEDIUM, HARD } Difficulty;
@@ -252,7 +254,7 @@ int main(void) {
   Screen currScreen = DIFFPAGE;
   int gapX = 10;
   int gapY = 10;
-  int startX = 200;
+  int startX = CARD_MATRIX_POS_EASY;
   int startY = 50;
 
   srand(time(NULL));
