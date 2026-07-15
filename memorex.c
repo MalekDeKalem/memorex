@@ -290,6 +290,9 @@ int main(void) {
   int cardTextMediumWidth = MeasureText(cardTextMedium, H2_SIZE);
   int cardTextHardWidth = MeasureText(cardTextHard, H2_SIZE);
 
+  char *menuTip = "Press M to get to the Menu";
+  int menuTipSize = MeasureText(menuTip, H2_SIZE);
+
   while (!WindowShouldClose()) {
 
     switch (currScreen) {
@@ -297,6 +300,7 @@ int main(void) {
       updateDiffPage(cards, &rec1, &rec2, &rec3, &currScreen, &currDiff, texArr,
                      texNames, startX, startY, gapX, gapY);
       BeginDrawing();
+      ClearBackground(DARKCOLOR);
       DrawRectangleRec(rec1, LIGHTCOLOR);
       DrawRectangleRec(rec2, LIGHTCOLOR);
       DrawRectangleRec(rec3, LIGHTCOLOR);
@@ -345,6 +349,8 @@ int main(void) {
         ClearBackground(DARKCOLOR);
         drawGrid(cards, &selectedCardBounds, MEM_EASY_SIZE);
         EndDrawing();
+        DrawText(menuTip, (WINDOW_WIDTH / 2) - (menuTipSize / 2),
+                 WINDOW_HEIGHT - H2_SIZE - 50, H2_SIZE, RAYWHITE);
         break;
       case MEDIUM:
         updateGrid(cards, &selectedCardBounds, MEM_MEDIUM_SIZE, &score,
@@ -353,6 +359,8 @@ int main(void) {
         ClearBackground(DARKCOLOR);
         drawGrid(cards, &selectedCardBounds, MEM_MEDIUM_SIZE);
         EndDrawing();
+        DrawText(menuTip, (WINDOW_WIDTH / 2) - (menuTipSize / 2),
+                 WINDOW_HEIGHT - H2_SIZE - 50, H2_SIZE, RAYWHITE);
         break;
       case HARD:
         updateGrid(cards, &selectedCardBounds, MEM_HARD_SIZE, &score,
@@ -361,10 +369,23 @@ int main(void) {
         ClearBackground(DARKCOLOR);
         drawGrid(cards, &selectedCardBounds, MEM_HARD_SIZE);
         EndDrawing();
+        DrawText(menuTip, (WINDOW_WIDTH / 2) - (menuTipSize / 2),
+                 WINDOW_HEIGHT - H2_SIZE - 50, H2_SIZE, RAYWHITE);
         break;
       }
 
-      break;
+      if (IsKeyPressed(KEY_M)) {
+        currScreen = DIFFPAGE;
+        selectedCardBounds.x = 0;
+        selectedCardBounds.y = 0;
+        selectedCardBounds.width = 0;
+        selectedCardBounds.height = 0;
+        waiting = false;
+        secondCard = -1;
+        firstCard = -1;
+        score = 0;
+        continue;
+      }
     }
   }
 
