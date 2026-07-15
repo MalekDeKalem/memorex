@@ -14,9 +14,9 @@
 #define MEM_HARD_SIZE 64
 #define WINDOW_WIDTH 1000
 #define WINDOW_HEIGHT 800
-#define GRID_WIDTH_EASY 6
-#define GRID_WIDTH_MEDIUM 6
-#define GRID_WIDTH_HARD 6
+#define GRID_WIDTH_EASY 8
+#define GRID_WIDTH_MEDIUM 8
+#define GRID_WIDTH_HARD 8
 #define GRID_HEIGHT_EASY 4
 #define CARD_SIZE 50
 #define DIFF_CARD_HEIGHT 400
@@ -27,7 +27,17 @@
 #define H1_SIZE 30
 #define H2_SIZE 20
 #define CARD_MATRIX_POS_EASY                                                   \
-  ((WINDOW_WIDTH / 2) - ((GRID_WIDTH_EASY * (CARD_SIZE + 10)) / 2))
+  ((WINDOW_WIDTH / 2) -                                                        \
+   ((GRID_WIDTH_EASY * (CARD_SIZE + DIFF_CARD_GAP / 2)) / 2))
+#define CARD_MATRIX_POS_HARD                                                   \
+  ((WINDOW_WIDTH / 2)) -                                                       \
+      ((GRID_WIDTH_HARD * (CARD_SIZE + DIFF_CARD_GAP / 2)) / 2)
+
+#define DARKESTCOLOR (Color){17, 17, 27, 255}
+#define DARKCOLOR (Color){30, 30, 46, 255}
+#define LIGHTESTCOLOR (Color){205, 214, 244, 255}
+#define LIGHTCOLOR (Color){166, 173, 200, 255}
+#define PRIMCOLOR (Color){203, 166, 247, 255}
 
 typedef enum { DIFFPAGE, GAMEPAGE } Screen;
 typedef enum { EASY = 1, MEDIUM, HARD } Difficulty;
@@ -93,27 +103,6 @@ void loadTextures(Texture2D *texArr, char **texNames) {
   closedir(dirp);
 }
 
-/*
-void initCards(Card *cards, Texture2D *texArr, char **texNames, int texSize,
-               int size, int n, int startX, int startY, int gapX, int gapY) {
-  size_t i;
-  for (i = 0; i < n; i++) {
-
-    int col = i % GRID_WIDTH_EASY;
-    int row = i / GRID_WIDTH_EASY;
-
-    cards[i].matched = false;
-    cards[i].revealed = false;
-    cards[i].col = SKYBLUE;
-    cards[i].bounds = (Rectangle){startX + col * (size + gapX),
-                                  startY + row * (size + gapY), size, size};
-
-    int pairIndex = (i / 2) % texSize;
-    cards[i].texName = texNames[pairIndex];
-    cards[i].tex = &texArr[pairIndex];
-  }
-}*/
-
 void initCards(Card *cards, Texture2D *texArr, char **texNames, int texSize,
                int n) {
   int i;
@@ -122,27 +111,28 @@ void initCards(Card *cards, Texture2D *texArr, char **texNames, int texSize,
 
     cards[i].matched = false;
     cards[i].revealed = false;
-    cards[i].col = SKYBLUE;
+    cards[i].col = PRIMCOLOR;
     cards[i].texName = texNames[pairIndex];
     cards[i].tex = &texArr[pairIndex];
   }
 }
 
-void drawGrid(Card *cards, int n) {
+void drawGrid(Card *cards, Rectangle *selectedCardBounds, int n) {
   size_t i;
   for (i = 0; i < n; i++) {
     if (cards[i].revealed || cards[i].matched) {
       Rectangle src = {0, 0, cards[i].tex->width, cards[i].tex->height};
       Rectangle dst = cards[i].bounds;
       DrawTexturePro(*cards[i].tex, src, dst, (Vector2){0, 0}, 0, WHITE);
+      DrawRectangleLinesEx(*selectedCardBounds, 5.f, LIGHTESTCOLOR);
     } else {
       DrawRectangleRec(cards[i].bounds, cards[i].col);
     }
   }
 }
 
-void updateGrid(Card *cards, int n, int *score, int *firstCard, int *secondCard,
-                float *timer, bool *waiting) {
+void updateGrid(Card *cards, Rectangle *selectedCardBounds, int n, int *score,
+                int *firstCard, int *secondCard, float *timer, bool *waiting) {
 
   float dt = GetFrameTime();
   if (*waiting) {
@@ -178,6 +168,10 @@ void updateGrid(Card *cards, int n, int *score, int *firstCard, int *secondCard,
 
         if (*firstCard == -1) {
           *firstCard = i;
+          selectedCardBounds->x = cards[i].bounds.x - 5;
+          selectedCardBounds->y = cards[i].bounds.y - 5;
+          selectedCardBounds->width = cards[i].bounds.width + 10;
+          selectedCardBounds->height = cards[i].bounds.height + 10;
         } else if (*secondCard == -1) {
           *secondCard = i;
           if (strcmp(cards[*firstCard].texName, cards[*secondCard].texName) ==
@@ -213,21 +207,21 @@ void updateDiffPage(Card *cards, Rectangle *rec1, Rectangle *rec2,
     if (CheckCollisionPointRec(mouse, *rec1)) {
       *diff = EASY;
       *page = GAMEPAGE;
-      initCards(cards, texArr, texNames, 12, MEM_EASY_SIZE);
+      initCards(cards, texArr, texNames, MEM_EASY_SIZE / 2, MEM_EASY_SIZE);
       shuffleCards(cards, MEM_EASY_SIZE);
       layoutCards(cards, MEM_EASY_SIZE, GRID_WIDTH_EASY, CARD_SIZE, startX,
                   startY, gapX, gapY);
     } else if (CheckCollisionPointRec(mouse, *rec2)) {
       *diff = MEDIUM;
       *page = GAMEPAGE;
-      initCards(cards, texArr, texNames, 12, MEM_MEDIUM_SIZE);
+      initCards(cards, texArr, texNames, MEM_MEDIUM_SIZE / 2, MEM_MEDIUM_SIZE);
       shuffleCards(cards, MEM_MEDIUM_SIZE);
       layoutCards(cards, MEM_MEDIUM_SIZE, GRID_WIDTH_MEDIUM, CARD_SIZE, startX,
                   startY, gapX, gapY);
     } else if (CheckCollisionPointRec(mouse, *rec3)) {
       *diff = HARD;
       *page = GAMEPAGE;
-      initCards(cards, texArr, texNames, 12, MEM_HARD_SIZE);
+      initCards(cards, texArr, texNames, MEM_HARD_SIZE / 2, MEM_HARD_SIZE);
       shuffleCards(cards, MEM_HARD_SIZE);
       layoutCards(cards, MEM_HARD_SIZE, GRID_WIDTH_HARD, CARD_SIZE, startX,
                   startY, gapX, gapY);
@@ -244,9 +238,12 @@ int main(void) {
   int secondCard = -1;
   float revealTimer = 0.0f;
   bool waiting = false;
-  Texture2D texArr[100];
-  char *texNames[100];
+  Texture2D texArr[64];
+  char *texNames[64];
   int score = 0;
+
+  Rectangle selectedCardBounds =
+      (Rectangle){.x = 0, .y = 0, .width = CARD_SIZE, .height = CARD_SIZE};
 
   loadTextures(texArr, texNames);
 
@@ -254,7 +251,7 @@ int main(void) {
   Screen currScreen = DIFFPAGE;
   int gapX = 10;
   int gapY = 10;
-  int startX = CARD_MATRIX_POS_EASY;
+  int startX = CARD_MATRIX_POS_HARD;
   int startY = 50;
 
   srand(time(NULL));
@@ -300,16 +297,16 @@ int main(void) {
       updateDiffPage(cards, &rec1, &rec2, &rec3, &currScreen, &currDiff, texArr,
                      texNames, startX, startY, gapX, gapY);
       BeginDrawing();
-      DrawRectangleRec(rec1, GREEN);
-      DrawRectangleRec(rec2, GREEN);
-      DrawRectangleRec(rec3, GREEN);
+      DrawRectangleRec(rec1, LIGHTCOLOR);
+      DrawRectangleRec(rec2, LIGHTCOLOR);
+      DrawRectangleRec(rec3, LIGHTCOLOR);
 
       DrawRectangle(rec1.x + 5, rec1.y + 5, DIFF_CARD_WIDTH - 10,
-                    DIFF_CARD_HEIGHT - 10, BLACK);
+                    DIFF_CARD_HEIGHT - 10, DARKESTCOLOR);
       DrawRectangle(rec2.x + 5, rec2.y + 5, DIFF_CARD_WIDTH - 10,
-                    DIFF_CARD_HEIGHT - 10, BLACK);
+                    DIFF_CARD_HEIGHT - 10, DARKESTCOLOR);
       DrawRectangle(rec3.x + 5, rec3.y + 5, DIFF_CARD_WIDTH - 10,
-                    DIFF_CARD_HEIGHT - 10, BLACK);
+                    DIFF_CARD_HEIGHT - 10, DARKESTCOLOR);
 
       DrawText(easy, (rec1.x + DIFF_CARD_WIDTH / 2.0) - (easyTextWidth / 2.0),
                (rec1.y + DIFF_CARD_HEIGHT / 2.0) - H1_SIZE, H1_SIZE, RAYWHITE);
@@ -342,27 +339,27 @@ int main(void) {
 
       switch (currDiff) {
       case EASY:
-        updateGrid(cards, MEM_EASY_SIZE, &score, &firstCard, &secondCard,
-                   &revealTimer, &waiting);
+        updateGrid(cards, &selectedCardBounds, MEM_EASY_SIZE, &score,
+                   &firstCard, &secondCard, &revealTimer, &waiting);
         BeginDrawing();
-        ClearBackground(DARKGRAY);
-        drawGrid(cards, MEM_EASY_SIZE);
+        ClearBackground(DARKCOLOR);
+        drawGrid(cards, &selectedCardBounds, MEM_EASY_SIZE);
         EndDrawing();
         break;
       case MEDIUM:
-        updateGrid(cards, MEM_MEDIUM_SIZE, &score, &firstCard, &secondCard,
-                   &revealTimer, &waiting);
+        updateGrid(cards, &selectedCardBounds, MEM_MEDIUM_SIZE, &score,
+                   &firstCard, &secondCard, &revealTimer, &waiting);
         BeginDrawing();
-        ClearBackground(DARKGRAY);
-        drawGrid(cards, MEM_MEDIUM_SIZE);
+        ClearBackground(DARKCOLOR);
+        drawGrid(cards, &selectedCardBounds, MEM_MEDIUM_SIZE);
         EndDrawing();
         break;
       case HARD:
-        updateGrid(cards, MEM_HARD_SIZE, &score, &firstCard, &secondCard,
-                   &revealTimer, &waiting);
+        updateGrid(cards, &selectedCardBounds, MEM_HARD_SIZE, &score,
+                   &firstCard, &secondCard, &revealTimer, &waiting);
         BeginDrawing();
-        ClearBackground(DARKGRAY);
-        drawGrid(cards, MEM_HARD_SIZE);
+        ClearBackground(DARKCOLOR);
+        drawGrid(cards, &selectedCardBounds, MEM_HARD_SIZE);
         EndDrawing();
         break;
       }
