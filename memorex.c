@@ -1,4 +1,7 @@
 #include "raylib.h"
+#if defined(PLATFORM_WEB)
+#include <emscripten/emscripten.h>
+#endif
 #include <dirent.h>
 #include <errno.h>
 #include <stdint.h>
@@ -32,6 +35,7 @@
 #define CARD_MATRIX_POS_HARD                                                   \
   ((WINDOW_WIDTH / 2)) -                                                       \
       ((GRID_WIDTH_HARD * (CARD_SIZE + DIFF_CARD_GAP / 2)) / 2)
+#define TEXTURE_COUNT 32
 
 #define DARKESTCOLOR (Color){17, 17, 27, 255}
 #define DARKCOLOR (Color){30, 30, 46, 255}
@@ -50,6 +54,27 @@ typedef struct {
   Texture2D *tex;
   Color col;
 } Card;
+
+typedef struct {
+  Card *cards;
+  int firstCard;
+  int secondCard;
+  float reavealTimer;
+  bool waiting;
+  Texture2D texArr[TEXTURE_COUNT << 1];
+  char *texNames[TEXTURE_COUNT << 1];
+  int score;
+  Rectangle selectedCardBounds;
+  Difficulty currDiff;
+  Screen currScreen;
+  Rectangle rec1;
+  Rectangle rec2;
+  Rectangle rec3;
+  int gapX;
+  int gapY;
+  int startX;
+  int startY;
+} GameState;
 
 void swapCard(Card *a, Card *b) {
   Card tmp = *a;
@@ -77,6 +102,38 @@ void layoutCards(Card *cards, int n, int gridWidth, int size, int startX,
   }
 }
 
+void gameLoop(void);
+
+#if defined(PLATFORM_WEB)
+
+void loadTextures(Texture2D *texArr, char **texNames) {
+
+  const char *files[] = {
+      "image_0_14-07-2026_04-29-16.png",  "image_10_14-07-2026_04-29-18.png",
+      "image_11_14-07-2026_04-29-18.png", "image_1_14-07-2026_04-29-16.png",
+      "image_12_14-07-2026_04-29-18.png", "image_13_14-07-2026_04-29-18.png",
+      "image_14_14-07-2026_04-29-18.png", "image_15_14-07-2026_04-29-19.png",
+      "image_16_14-07-2026_04-29-19.png", "image_17_14-07-2026_04-29-19.png",
+      "image_18_14-07-2026_04-29-19.png", "image_19_14-07-2026_04-29-19.png",
+      "image_20_14-07-2026_04-29-19.png", "image_21_14-07-2026_04-29-20.png",
+      "image_2_14-07-2026_04-29-16.png",  "image_22_14-07-2026_04-29-20.png",
+      "image_23_14-07-2026_04-29-20.png", "image_24_14-07-2026_04-29-20.png",
+      "image_25_14-07-2026_04-29-20.png", "image_26_14-07-2026_04-29-21.png",
+      "image_27_14-07-2026_04-29-21.png", "image_28_14-07-2026_04-29-21.png",
+      "image_29_14-07-2026_04-29-21.png", "image_30_14-07-2026_04-29-21.png",
+      "image_31_14-07-2026_04-29-21.png", "image_32_14-07-2026_04-29-22.png",
+      "image_4_14-07-2026_04-29-16.png",  "image_5_14-07-2026_04-29-17.png",
+      "image_6_14-07-2026_04-29-17.png",  "image_7_14-07-2026_04-29-17.png",
+      "image_8_14-07-2026_04-29-17.png",  "image_9_14-07-2026_04-29-17.png"};
+
+  for (size_t i = 0; i < TEXTURE_COUNT; i++) {
+    char buffer[100];
+    snprintf(buffer, sizeof(buffer), "./textures/%s", files[i]);
+    texArr[i] = LoadTexture(buffer);
+    texNames[i] = strdup(files[i]);
+  }
+}
+#else
 void loadTextures(Texture2D *texArr, char **texNames) {
   DIR *dirp;
   struct dirent *file;
@@ -102,6 +159,7 @@ void loadTextures(Texture2D *texArr, char **texNames) {
 
   closedir(dirp);
 }
+#endif
 
 void initCards(Card *cards, Texture2D *texArr, char **texNames, int texSize,
                int n) {
@@ -229,167 +287,190 @@ void updateDiffPage(Card *cards, Rectangle *rec1, Rectangle *rec2,
   }
 }
 
+static GameState game;
+const char *easy = "Easy";
+const char *medium = "Medium";
+const char *hard = "Hard";
+
+const char *cardTextEasy = "24 Cards";
+const char *cardTextMedium = "48 Cards";
+const char *cardTextHard = "64 Cards";
+
 int main(void) {
+
   InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Memorex");
-  SetTargetFPS(60);
+  memset(&game, 0, sizeof(game));
 
-  Card *cards = (Card *)malloc(sizeof(Card) * MEM_HARD_SIZE);
-  int firstCard = -1;
-  int secondCard = -1;
-  float revealTimer = 0.0f;
-  bool waiting = false;
-  Texture2D texArr[64];
-  char *texNames[64];
-  int score = 0;
-
-  Rectangle selectedCardBounds =
+  game.cards = (Card *)malloc(sizeof(Card) * MEM_HARD_SIZE);
+  game.firstCard = -1;
+  game.secondCard = -1;
+  game.reavealTimer = 0.0f;
+  game.waiting = false;
+  game.score = 0;
+  game.selectedCardBounds =
       (Rectangle){.x = 0, .y = 0, .width = CARD_SIZE, .height = CARD_SIZE};
 
-  loadTextures(texArr, texNames);
-
-  Difficulty currDiff = EASY;
-  Screen currScreen = DIFFPAGE;
-  int gapX = 10;
-  int gapY = 10;
-  int startX = CARD_MATRIX_POS_HARD;
-  int startY = 50;
+  loadTextures(game.texArr, game.texNames);
+  game.currDiff = EASY;
+  game.currScreen = DIFFPAGE;
+  game.gapX = 10;
+  game.gapY = 10;
+  game.startX = CARD_MATRIX_POS_HARD;
+  game.startY = 50;
 
   srand(time(NULL));
 
-  Rectangle rec1 = {.x =
-                        DIFF_CARD_GAP * 1 + DIFF_CARD_WIDTH * 0 + DIFF_CARD_POS,
-                    .y = WINDOW_HEIGHT / 2.0 - DIFF_CARD_HEIGHT / 2.0,
-                    .width = DIFF_CARD_WIDTH,
-                    .height = DIFF_CARD_HEIGHT};
+  game.rec1 =
+      (Rectangle){.x = DIFF_CARD_GAP * 1 + DIFF_CARD_WIDTH * 0 + DIFF_CARD_POS,
+                  .y = WINDOW_HEIGHT / 2.0 - DIFF_CARD_HEIGHT / 2.0,
+                  .width = DIFF_CARD_WIDTH,
+                  .height = DIFF_CARD_HEIGHT};
 
-  Rectangle rec2 = {.x =
-                        DIFF_CARD_GAP * 2 + DIFF_CARD_WIDTH * 1 + DIFF_CARD_POS,
-                    .y = WINDOW_HEIGHT / 2.0 - DIFF_CARD_HEIGHT / 2.0,
-                    .width = DIFF_CARD_WIDTH,
-                    .height = DIFF_CARD_HEIGHT};
+  game.rec2 =
+      (Rectangle){.x = DIFF_CARD_GAP * 2 + DIFF_CARD_WIDTH * 1 + DIFF_CARD_POS,
+                  .y = WINDOW_HEIGHT / 2.0 - DIFF_CARD_HEIGHT / 2.0,
+                  .width = DIFF_CARD_WIDTH,
+                  .height = DIFF_CARD_HEIGHT};
 
-  Rectangle rec3 = {.x =
-                        DIFF_CARD_GAP * 3 + DIFF_CARD_WIDTH * 2 + DIFF_CARD_POS,
-                    .y = WINDOW_HEIGHT / 2.0 - DIFF_CARD_HEIGHT / 2.0,
-                    .width = DIFF_CARD_WIDTH,
-                    .height = DIFF_CARD_HEIGHT};
+  game.rec3 =
+      (Rectangle){.x = DIFF_CARD_GAP * 3 + DIFF_CARD_WIDTH * 2 + DIFF_CARD_POS,
+                  .y = WINDOW_HEIGHT / 2.0 - DIFF_CARD_HEIGHT / 2.0,
+                  .width = DIFF_CARD_WIDTH,
+                  .height = DIFF_CARD_HEIGHT};
 
-  const char *easy = "Easy";
-  const char *medium = "Medium";
-  const char *hard = "Hard";
+  printf("Before game loop\n");
 
-  const char *cardTextEasy = "24 Cards";
-  const char *cardTextMedium = "48 Cards";
-  const char *cardTextHard = "64 Cards";
-
-  int easyTextWidth = MeasureText(easy, H1_SIZE);
-  int mediumTextWidth = MeasureText(medium, H1_SIZE);
-  int hardTextWidth = MeasureText(hard, H1_SIZE);
-
-  int cardTextEasyWidth = MeasureText(cardTextEasy, H2_SIZE);
-  int cardTextMediumWidth = MeasureText(cardTextMedium, H2_SIZE);
-  int cardTextHardWidth = MeasureText(cardTextHard, H2_SIZE);
-
-  char *menuTip = "Press M to get to the Menu";
-  int menuTipSize = MeasureText(menuTip, H2_SIZE);
-
+#if defined(PLATFORM_WEB)
+  emscripten_set_main_loop(gameLoop, 0, 1);
+#else
+  SetTargetFPS(60);
   while (!WindowShouldClose()) {
+    gameLoop();
+  }
+#endif
+  CloseWindow();
+  free(game.cards);
+  return 0;
+}
 
-    switch (currScreen) {
-    case DIFFPAGE:
-      updateDiffPage(cards, &rec1, &rec2, &rec3, &currScreen, &currDiff, texArr,
-                     texNames, startX, startY, gapX, gapY);
+void gameLoop() {
+  switch (game.currScreen) {
+  case DIFFPAGE:
+    updateDiffPage(game.cards, &game.rec1, &game.rec2, &game.rec3,
+                   &game.currScreen, &game.currDiff, game.texArr, game.texNames,
+                   game.startX, game.startY, game.gapX, game.gapY);
+    BeginDrawing();
+    ClearBackground(DARKCOLOR);
+    DrawRectangleRec(game.rec1, LIGHTCOLOR);
+    DrawRectangleRec(game.rec2, LIGHTCOLOR);
+    DrawRectangleRec(game.rec3, LIGHTCOLOR);
+
+    DrawRectangle(game.rec1.x + 5, game.rec1.y + 5, DIFF_CARD_WIDTH - 10,
+                  DIFF_CARD_HEIGHT - 10, DARKESTCOLOR);
+    DrawRectangle(game.rec2.x + 5, game.rec2.y + 5, DIFF_CARD_WIDTH - 10,
+                  DIFF_CARD_HEIGHT - 10, DARKESTCOLOR);
+    DrawRectangle(game.rec3.x + 5, game.rec3.y + 5, DIFF_CARD_WIDTH - 10,
+                  DIFF_CARD_HEIGHT - 10, DARKESTCOLOR);
+
+    DrawText("Easy",
+             (game.rec1.x + DIFF_CARD_WIDTH / 2.0) -
+                 (MeasureText("Easy", H1_SIZE) / 2.0),
+             (game.rec1.y + DIFF_CARD_HEIGHT / 2.0) - H1_SIZE, H1_SIZE,
+             RAYWHITE);
+
+    DrawText("Medium",
+             (game.rec2.x + DIFF_CARD_WIDTH / 2.0) -
+                 (MeasureText("Medium", H1_SIZE) / 2.0),
+             (game.rec2.y + DIFF_CARD_HEIGHT / 2.0) - H1_SIZE, H1_SIZE,
+             RAYWHITE);
+
+    DrawText("Hard",
+             (game.rec3.x + DIFF_CARD_WIDTH / 2.0) -
+                 (MeasureText("Hard", H1_SIZE) / 2.0),
+             (game.rec3.y + DIFF_CARD_HEIGHT / 2.0) - H1_SIZE, H1_SIZE,
+             RAYWHITE);
+
+    DrawText("24 Cards",
+             (game.rec1.x + DIFF_CARD_WIDTH / 2.0) -
+                 (MeasureText("24 Cards", H2_SIZE) / 2.0),
+             (game.rec1.y + DIFF_CARD_HEIGHT / 2.0 + H1_SIZE + 50) - H2_SIZE,
+             H2_SIZE, RAYWHITE);
+
+    DrawText("48 Cards",
+             (game.rec2.x + DIFF_CARD_WIDTH / 2.0) -
+                 (MeasureText("48 Cards", H2_SIZE) / 2.0),
+             (game.rec2.y + DIFF_CARD_HEIGHT / 2.0 + H1_SIZE + 50) - H2_SIZE,
+             H2_SIZE, RAYWHITE);
+
+    DrawText("64 Cards",
+             (game.rec3.x + DIFF_CARD_WIDTH / 2.0) -
+                 (MeasureText("64 Cards", H2_SIZE) / 2.0),
+             (game.rec3.y + DIFF_CARD_HEIGHT / 2.0 + H1_SIZE + 50) - H2_SIZE,
+             H2_SIZE, RAYWHITE);
+
+    EndDrawing();
+
+    break;
+  case GAMEPAGE:
+
+    if (IsKeyPressed(KEY_M)) {
+      game.currScreen = DIFFPAGE;
+      game.selectedCardBounds.x = 0;
+      game.selectedCardBounds.y = 0;
+      game.selectedCardBounds.width = 0;
+      game.selectedCardBounds.height = 0;
+      game.waiting = false;
+      game.secondCard = -1;
+      game.firstCard = -1;
+      game.score = 0;
+    }
+
+    switch (game.currDiff) {
+    case EASY:
+      updateGrid(game.cards, &game.selectedCardBounds, MEM_EASY_SIZE,
+                 &game.score, &game.firstCard, &game.secondCard,
+                 &game.reavealTimer, &game.waiting);
       BeginDrawing();
       ClearBackground(DARKCOLOR);
-      DrawRectangleRec(rec1, LIGHTCOLOR);
-      DrawRectangleRec(rec2, LIGHTCOLOR);
-      DrawRectangleRec(rec3, LIGHTCOLOR);
-
-      DrawRectangle(rec1.x + 5, rec1.y + 5, DIFF_CARD_WIDTH - 10,
-                    DIFF_CARD_HEIGHT - 10, DARKESTCOLOR);
-      DrawRectangle(rec2.x + 5, rec2.y + 5, DIFF_CARD_WIDTH - 10,
-                    DIFF_CARD_HEIGHT - 10, DARKESTCOLOR);
-      DrawRectangle(rec3.x + 5, rec3.y + 5, DIFF_CARD_WIDTH - 10,
-                    DIFF_CARD_HEIGHT - 10, DARKESTCOLOR);
-
-      DrawText(easy, (rec1.x + DIFF_CARD_WIDTH / 2.0) - (easyTextWidth / 2.0),
-               (rec1.y + DIFF_CARD_HEIGHT / 2.0) - H1_SIZE, H1_SIZE, RAYWHITE);
-
-      DrawText(medium,
-               (rec2.x + DIFF_CARD_WIDTH / 2.0) - (mediumTextWidth / 2.0),
-               (rec2.y + DIFF_CARD_HEIGHT / 2.0) - H1_SIZE, H1_SIZE, RAYWHITE);
-
-      DrawText(hard, (rec3.x + DIFF_CARD_WIDTH / 2.0) - (hardTextWidth / 2.0),
-               (rec3.y + DIFF_CARD_HEIGHT / 2.0) - H1_SIZE, H1_SIZE, RAYWHITE);
-
-      DrawText(cardTextEasy,
-               (rec1.x + DIFF_CARD_WIDTH / 2.0) - (cardTextEasyWidth / 2.0),
-               (rec1.y + DIFF_CARD_HEIGHT / 2.0 + H1_SIZE + 50) - H2_SIZE,
-               H2_SIZE, RAYWHITE);
-
-      DrawText(cardTextMedium,
-               (rec2.x + DIFF_CARD_WIDTH / 2.0) - (cardTextMediumWidth / 2.0),
-               (rec2.y + DIFF_CARD_HEIGHT / 2.0 + H1_SIZE + 50) - H2_SIZE,
-               H2_SIZE, RAYWHITE);
-
-      DrawText(cardTextHard,
-               (rec3.x + DIFF_CARD_WIDTH / 2.0) - (cardTextHardWidth / 2.0),
-               (rec3.y + DIFF_CARD_HEIGHT / 2.0 + H1_SIZE + 50) - H2_SIZE,
-               H2_SIZE, RAYWHITE);
-
+      drawGrid(game.cards, &game.selectedCardBounds, MEM_EASY_SIZE);
+      DrawText("Press M to get to the Menu",
+               (WINDOW_WIDTH / 2) -
+                   ((MeasureText("Press M to get to the Menu", H2_SIZE)) / 2),
+               WINDOW_HEIGHT - H2_SIZE - 50, H2_SIZE, RAYWHITE);
       EndDrawing();
       break;
-    case GAMEPAGE:
-
-      switch (currDiff) {
-      case EASY:
-        updateGrid(cards, &selectedCardBounds, MEM_EASY_SIZE, &score,
-                   &firstCard, &secondCard, &revealTimer, &waiting);
-        BeginDrawing();
-        ClearBackground(DARKCOLOR);
-        drawGrid(cards, &selectedCardBounds, MEM_EASY_SIZE);
-        EndDrawing();
-        DrawText(menuTip, (WINDOW_WIDTH / 2) - (menuTipSize / 2),
-                 WINDOW_HEIGHT - H2_SIZE - 50, H2_SIZE, RAYWHITE);
-        break;
-      case MEDIUM:
-        updateGrid(cards, &selectedCardBounds, MEM_MEDIUM_SIZE, &score,
-                   &firstCard, &secondCard, &revealTimer, &waiting);
-        BeginDrawing();
-        ClearBackground(DARKCOLOR);
-        drawGrid(cards, &selectedCardBounds, MEM_MEDIUM_SIZE);
-        EndDrawing();
-        DrawText(menuTip, (WINDOW_WIDTH / 2) - (menuTipSize / 2),
-                 WINDOW_HEIGHT - H2_SIZE - 50, H2_SIZE, RAYWHITE);
-        break;
-      case HARD:
-        updateGrid(cards, &selectedCardBounds, MEM_HARD_SIZE, &score,
-                   &firstCard, &secondCard, &revealTimer, &waiting);
-        BeginDrawing();
-        ClearBackground(DARKCOLOR);
-        drawGrid(cards, &selectedCardBounds, MEM_HARD_SIZE);
-        EndDrawing();
-        DrawText(menuTip, (WINDOW_WIDTH / 2) - (menuTipSize / 2),
-                 WINDOW_HEIGHT - H2_SIZE - 50, H2_SIZE, RAYWHITE);
-        break;
-      }
-
-      if (IsKeyPressed(KEY_M)) {
-        currScreen = DIFFPAGE;
-        selectedCardBounds.x = 0;
-        selectedCardBounds.y = 0;
-        selectedCardBounds.width = 0;
-        selectedCardBounds.height = 0;
-        waiting = false;
-        secondCard = -1;
-        firstCard = -1;
-        score = 0;
-        continue;
-      }
+    case MEDIUM:
+      updateGrid(game.cards, &game.selectedCardBounds, MEM_MEDIUM_SIZE,
+                 &game.score, &game.firstCard, &game.secondCard,
+                 &game.reavealTimer, &game.waiting);
+      BeginDrawing();
+      ClearBackground(DARKCOLOR);
+      drawGrid(game.cards, &game.selectedCardBounds, MEM_MEDIUM_SIZE);
+      DrawText("Press M to get to the Menu",
+               (WINDOW_WIDTH / 2) -
+                   ((MeasureText("Press M to get to the Menu", H2_SIZE)) / 2),
+               WINDOW_HEIGHT - H2_SIZE - 50, H2_SIZE, RAYWHITE);
+      EndDrawing();
+      break;
+    case HARD:
+      updateGrid(game.cards, &game.selectedCardBounds, MEM_HARD_SIZE,
+                 &game.score, &game.firstCard, &game.secondCard,
+                 &game.reavealTimer, &game.waiting);
+      BeginDrawing();
+      ClearBackground(DARKCOLOR);
+      drawGrid(game.cards, &game.selectedCardBounds, MEM_HARD_SIZE);
+      DrawText("Press M to get to the Menu",
+               (WINDOW_WIDTH / 2) -
+                   ((MeasureText("Press M to get to the Menu", H2_SIZE)) / 2),
+               WINDOW_HEIGHT - H2_SIZE - 50, H2_SIZE, RAYWHITE);
+      EndDrawing();
+      break;
+    default:
+      BeginDrawing();
+      ClearBackground(DARKCOLOR);
+      DrawText("INVALID DIFFICULTY", 100, 100, 30, RAYWHITE);
+      EndDrawing();
+      break;
     }
   }
-
-  CloseWindow();
-  free(cards);
-  return 0;
 }
