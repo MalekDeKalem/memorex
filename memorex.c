@@ -244,7 +244,6 @@ void updateGrid(Card *cards, Rectangle *selectedCardBounds, int n, int *score,
               printf("You won\n");
             }
           } else {
-            printf("Waiting\n");
             *waiting = true;
             *timer = 0.0f;
           }
@@ -337,8 +336,6 @@ int main(void) {
                   .y = WINDOW_HEIGHT / 2.0 - DIFF_CARD_HEIGHT / 2.0,
                   .width = DIFF_CARD_WIDTH,
                   .height = DIFF_CARD_HEIGHT};
-
-  printf("Before game loop\n");
 
 #if defined(PLATFORM_WEB)
   emscripten_set_main_loop(gameLoop, 0, 1);
